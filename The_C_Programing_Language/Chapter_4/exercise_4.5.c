@@ -1,16 +1,18 @@
 #include <stdio.h>
-#include <stdlib.h> /* for atof() */
+#include <math.h>
+#include <stdlib.h>
 #include <ctype.h>
+#include <string.h>
 
 /*
-Add the commands to print the top elements of the stack without popping, to
-duplicate it, and to swap the top two elements. Add a command to clear the stack.
+Add access to library functions like  sin ,  exp , and  pow . See <math.h>
 */
 
 #define MAXOP 100   /* max size of operand or operator */
 #define NUMBER '0'  /* signal that a number was found */
 #define MAXVAL 100 /* maximum depth of val stack */
 #define BUFSIZE 100
+#define NAME 'n'
 
 int sp = 0;         /* next free stack position */
 double val[MAXVAL]; /* value stack */
@@ -24,6 +26,7 @@ void clear(void);
 void print(void);
 int getch(void);
 void ungetch(int);
+void mathfnc(char s[]);
 
 /* reverse Polish calculator */
 int main() {
@@ -35,6 +38,9 @@ int main() {
         switch (type) {
             case NUMBER:
                 push(atof(s));
+                break;
+            case NAME:
+                mathfnc(s);
                 break;
             case '+':
                 push(pop() + pop());
@@ -127,21 +133,34 @@ int getop(char s[]) {
         ;
     s[1] = '\0';
 
-    if (!isdigit(c) && c != '.' && c != '-')
-        return c;           /* not a number */
+    // if (c == '-') {
+    //     next = getch();
+    //     if (!isdigit(next) && next != '.')
+    //         return c;       /* not a number */
+    //     c = next;
+    //     s[i] = '-';
+    // } else {
+    //     c = getch();
+    // }
 
-    if (c == '-') {
-        next = getch();
-        if (!isdigit(next) && next != '.')
-            return c;       /* not a number */
-        c = next;
-        s[i] = '-';
-    } else {
-        c = getch();
+    if (islower(c)) {
+        while (islower(s[++i] = c = getch()))
+            ;
+        s[i] = '\0';
+        if (c != EOF)
+            ungetch(c);
+        if (strlen(s) > 1)
+            return NAME;
+        else
+            return c;
     }
+
+    if (!isdigit(c) && c != '.')
+        return c;           /* not a number */
        
-    while (isdigit(s[++i] = c))    /* collect integer part */
-        c = getch();
+    if (isdigit(c))    /* collect integer part */
+        while (isdigit(s[++i] = c = getch()))
+            ;
     if (c == '.')   /* collect fraction part */
         while (isdigit(s[++i] = c = getch()))
             ;
@@ -162,4 +181,21 @@ void ungetch(int c) {
         printf("ungetch: too many characters\n");
     else
         buf[bufp++] = c;
+}
+
+/* mathfnc: check string s for supported math functions */
+void mathfnc(char s[]) {
+    double op2;
+
+    if (strcmp(s, "sin") == 0)
+        push(sin(pop()));
+    else if (strcmp(s, "cos") == 0)
+        push(cos(pop()));
+    else if (strcmp(s, "exp") == 0)
+        push(exp(pop()));
+    else if (strcmp(s, "pow") == 0) {
+        op2 = pop();
+        push(pow(pop(), op2));
+    } else
+        printf("error: %s not supported\n", s);
 }
