@@ -1,94 +1,92 @@
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 
 /*
-Write a program that reads a C program and prints in alphabetical order each
-group of variable names that are identical in the first 6 characters, but different somewhere
-thereafter. Don't count words within strings and comments. Make 6 a parameter that can be
-set from the command line.
+Write a program that prints the distinct words in its input sorted into decreasing
+order of frequency of occurrence. Precede each word by its count.
 */
 
 #define MAXWORD 100
-#define YES 1
-#define NO 0
+#define NDISTINCT 1000
 
 struct tnode {
     char *word;
-    int match;
+    int count;
     struct tnode *left;
     struct tnode *right;
 };
 
-char buf[1000];
-int bufp = 0;
-
-struct tnode *addtreex(struct tnode *, char *, int, int *);
-void treeprint(struct tnode *);
+struct tnode *addtree(struct tnode *, char *);
 int getword(char *, int);
+void sortlist(void);
+void treestore(struct tnode *);
 struct tnode *talloc(void);
 char *strdup1(char *);
-int compare(char *, struct tnode *p, int, int *);
+void treeprint(struct tnode *);
 
-int main(int argc, char *argv[]) {
+char buf[1000];
+int bufp = 0;
+struct tnode *list[NDISTINCT];
+int ntn = 0;
+
+int main() {
     struct tnode *root;
     char word[MAXWORD];
-    int found = NO;     // YES if match was found
-    int num;            // number of the first ident
+    int i;
 
-    num = (--argc > 0 && (*++argv)[0] == '-') ? atof(argv[1]) : 6;
     root = NULL;
-
-    while (getword(word, MAXWORD) != EOF) {
-        if (isalpha(word[0]) && strlen(word) >= num)
-            root = addtreex(root, word, num, &found);
-        found = NO;
-    }
-    treeprint(root);
+    while (getword(word, MAXWORD) != EOF)
+        if (isalpha(word[0]))
+            root = addtree(root, word);
+    treestore(root);
+    sortlist();
+    for (i = 0; i < ntn; i++)
+        printf("%2d:%20s\n", list[i]->count, list[i]->word);
+    // treeprint(root);
     return 0;
 }
 
-struct tnode *addtreex(struct tnode *p, char *w, int num, int *found) {
+void treestore(struct tnode *p) {
+    if (p != NULL) {
+        treestore(p->left);
+        if (ntn < NDISTINCT)
+            list[ntn++] = p;
+        treestore(p->right);
+    }
+}
+
+void sortlist(void) {
+    int gap, i, j;
+    struct tnode *temp;
+
+    for (gap = ntn/2; gap > 0; gap /= 2)
+        for(i = gap; i < ntn; i++)
+            for (j = i-gap; j >= 0; j -= gap) {
+                if ((list[j]->count) >= (list[j+gap]->count))
+                    break;
+                temp = list[j];
+                list[j] = list[j+gap];
+                list[j+gap] = temp;
+            }
+}
+
+struct tnode *addtree(struct tnode *p, char *w) {
     int cond;
 
     if (p == NULL) {
         p = talloc();
-        p->word = strdup(w);
-        p->match = *found;
+        p->word = strdup1(w);
+        p->count = 1;
         p->left = p->right = NULL;
-    } else if ((cond = compare(w, p, num, found)) < 0) {
-        p->left = addtreex(p->left, w, num, found);
-    } else if (cond > 0) {
-        p->right = addtreex(p->left, w, num, found);
-    }
+    } else if ((cond = strcmp(w, p->word)) == 0)
+        p->count++;
+    else if (cond < 0)
+        p->left = addtree(p->left, w);
+    else
+        p->right = addtree(p->right, w);
     return p;
-}
-
-// compare: compare words and unpdate p->match
-int compare(char *s, struct tnode *p, int num, int *found) {
-    int i;
-    char *t = p->word;
-
-    for (i = 0; *s == *t; i++, s++, t++) {
-        if (*s == '\0')
-            return 0;
-    }
-    if (i >= num) {
-        *found = YES;
-        p->match = YES;
-    }
-    return *s - *t;
-}
-
-void treeprint(struct tnode *p) {
-    if (p != NULL) {
-        treeprint(p->left);
-        if (p->match) {
-            printf("%s\n", p->word);
-        }
-        treeprint(p->right);
-    }
 }
 
 // talloc: make a tnode
@@ -156,4 +154,12 @@ void ungetch(int c) {
         printf("ungetch: too many characters\n");
     else
         buf[bufp++] = c;
+}
+
+void treeprint(struct tnode *p) {
+    if (p != NULL) {
+        treeprint(p->left);
+        printf("%4d %s\n", p->count, p->word);
+        treeprint(p->right);
+    }
 }
